@@ -37,7 +37,7 @@ func createHandler(store storage.IStorage, hndl handlers) func(net.Conn) {
 func main() {
 	var localStorage storage.AtomicStorage
 	store := localStorage.Create()
-	listener, err := net.Listen("tcp", ":9990")
+	listener, err := net.Listen("tcp", ":9999")
 	defer listener.Close()
 	if err != nil {
 		panic(err)
