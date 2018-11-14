@@ -5,50 +5,93 @@ import (
 	"fmt"
 	storage "memoryStorage/lib/storage"
 	"net"
+	"strings"
 )
 
-func createHandler(store *storage.SyncStorage) func(net.Conn, string) {
-	return func(conn net.Conn, com string) {
-		conn.Write([]byte(com))
+type handlers map[string]func(store storage.IStorage, args ...string) string
+
+func createHandler(store storage.IStorage, hndl handlers) func(net.Conn) {
+	return func(conn net.Conn) {
+		defer conn.Close()
+		for {
+			mesaage, _ := bufio.NewReader(conn).ReadString('\n')
+			args := strings.Fields(mesaage)
+			if len(args) < 1 {
+				continue
+			}
+			command := args[0]
+			if strings.ToLower(command) == "exit" || strings.ToLower(command) == "close" {
+				break
+			}
+			if len(args) < 2 {
+				continue
+			}
+			args = args[1:]
+			if handler, exist := hndl[command]; exist {
+				result := handler(store, args...)
+				conn.Write([]byte(result + "\n"))
+			}
+		}
 	}
 }
 func main() {
-	var localStorage storage.SyncStorage
+	var localStorage storage.AtomicStorage
 	store := localStorage.Create()
-	listener, err := net.Listen("tcp", ":5555")
+	listener, err := net.Listen("tcp", ":9990")
+	defer listener.Close()
 	if err != nil {
 		panic(err)
 	}
-	handler := createHandler(store)
+	var hndl = make(handlers)
+	hndl["set"] = func(store storage.IStorage, args ...string) string {
+		if len(args) < 2 {
+			return "Wrong arguments number"
+		}
+		store.Set(args[0], args[1])
+		return "OK"
+	}
+	hndl["get"] = func(store storage.IStorage, args ...string) string {
+		if len(args) < 1 {
+			return "Wrong arguments number"
+		}
+		var result string
+		val, exist := store.Get(args[0])
+		if exist {
+			result = fmt.Sprintf("1\n%s", val)
+		} else {
+			result = "0"
+		}
+		return result
+	}
+	hndl["exist"] = func(store storage.IStorage, args ...string) string {
+		if len(args) < 1 {
+			return "Wrong arguments number"
+		}
+		if store.Exist(args[0]) {
+			return "1"
+		}
+		return "0"
+	}
+	hndl["del"] = func(store storage.IStorage, args ...string) string {
+		if len(args) < 1 {
+			return "Wrong arguments number"
+		}
+		if store.Delete(args[0]) {
+			return "1"
+		}
+		return "0"
+	}
+	handler := createHandler(store, hndl)
 	for {
 		fmt.Printf("Listening at %q. \n", listener.Addr())
 		conn, err := listener.Accept()
 		if err != nil {
 			break
 		}
-		fmt.Printf("Received new connection from %q. \n", conn.RemoteAddr())
-		command, _ := bufio.NewReader(conn).ReadString('\n')
-		go handler(conn, command)
-		fmt.Printf("Spawned handler to handle connection from %q. \n", conn.RemoteAddr())
+		rAddress := conn.RemoteAddr()
+		fmt.Printf("Received new connection from %q. \n", rAddress)
+		go handler(conn)
+		fmt.Printf("Spawned handler to handle connection from %q. \n", rAddress)
 	}
-	// store.Set("key", "value")
-	// store.Set("key", "value2")
-
-	// var localStorage2 storage.AtomicStorage
-	// store2 := localStorage2.Create()
-	// store2.Set("key", "value")
-	// fmt.Printf("key1 = %s \n", store2.Get("key"))
-	// for i := 0; i < 10; i++ {
-	// 	go func(i int) {
-	// 		if i == 5 {
-	// 			store2.Set("key", "val4")
-	// 		}
-
-	// 		fmt.Printf("key4 = %s  %d \n", store2.Get("key"), i)
-	// 	}(i)
-	// }
-	// fmt.Printf("key3 = %s \n", store2.Get("key"))
-
-	// fmt.Scanln()
 
 }

@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 )
+
 type Config struct {
 	sync.RWMutex
 	endpoint string
@@ -27,7 +28,7 @@ func BenchmarkPMutexGet(b *testing.B) {
 	store.Set("key", "value")
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_ = store.Get("key")
+			_, _ = store.Get("key")
 		}
 	})
 }
@@ -50,7 +51,7 @@ func BenchmarkPAtomicGet(b *testing.B) {
 	b.ReportAllocs()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_ = store.Get("key")
+			_, _ = store.Get("key")
 		}
 	})
 }
@@ -65,5 +66,3 @@ func BenchmarkMemoryGet(b *testing.B) {
 		}
 	})
 }
-
-
