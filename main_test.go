@@ -2,14 +2,8 @@ package main
 
 import (
 	"memoryStorage/lib/storage"
-	"sync"
 	"testing"
 )
-
-type Config struct {
-	sync.RWMutex
-	endpoint string
-}
 
 func BenchmarkPMutexSet(b *testing.B) {
 	var localStorage storage.SyncStorage
