@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	storage "memoryStorage/lib/storage"
+	storage "telnetStorage/lib/storage"
 	"net"
 	"strings"
 )
